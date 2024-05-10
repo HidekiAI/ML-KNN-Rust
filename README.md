@@ -100,7 +100,7 @@ elapsed time=2366.8142956s  <-- that's about 40 minutes!
 ```
 
 ```bash
-# broken down to 4 threads
+# broken down to 5 threads (NOTE: I ran in release mode, maybe unfair to compare against debug?)
 Creating data directory: data/MNIST
 Already downloaded
 Extracting data
@@ -112,8 +112,8 @@ test_labels len=10000
 k=3
 algorithm=Euclidean
 byte_size=One
-accuracy=0.8541
-elapsed time=2980.0857858s  <-- took longer?!?!?
+accuracy=0.8451
+elapsed time=384.5279364s  <-- 40 minutes reduced down to about 6.5 minutes :)
 ```
 
 Note that above sample output is using single thread to compare each test image 60,000 times (in release build)!
