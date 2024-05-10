@@ -8,6 +8,8 @@ Truth be told, main inspirations is because of this gentleman's video: [clumsy c
 
 One thing that inspired me into trying this out was (as mentioned above of the video that inspired me) KNN is slow, and what I wanted to experiement was on how I can speed up based on parallelizing the comparison against the trained images. MNIST database consits of 60K images, so with 4 threads, I can break that down to 15K per thread, and so on.
 
+  Side note: See postmortem and hindsight section in regards to trained images chunked into separate threads.
+
 Initial thinking, because image comparison (at least, my initial intents) will be based on flattening the 2D image into 1D, and comparing byte-by-byte (`uint8`), if the image is 28x28 pixels (flatten to 784 pixels), that's 784 comparions per trained image. I've watched the video in which the coder prints out the index of the trained image it was comparing against, and the index he's print out would show in rate of about 1 per second... The coder also converted a single byte (`uint8`) into a 32-bit (`uint32`), wasting 24-bits per read.
 
 Note: In C++, that's `std::uint8_t` and `std::uint32_t`; whether in C++ or Rust, I will stay away from using the term "word" and "long", though no matter which language, "byte" is 8-bits, due to ambiguities in languages and native settings, such as `size_t` and `int` can be 32 or 64 bits, or to express 64-bits as "`long long`", `char` can be 8, 16, or 32-bits compared to `wchar` being platform specfic to Windows for 16-bit, etc, is just TOO AMBIGUOUS! 30+ years ago, we had to also consider using C libraries like `htonl()` to deal with byte-sex... Sorry for the rant, but this is one of the things about Rust, the native types are explicit in that way and static-analyzer will even nag (and hate you and haunt your underwear drawers until you fix it or dynamically cast it) if you try to assign `uint32` into an `int32` variable (and vice-versa)!
@@ -81,6 +83,7 @@ Here are the current `Config` setup for args:
 ```
 
 ```bash
+# Unparallel
 Creating data directory: data/MNIST
 Already downloaded
 Extracting data
@@ -96,8 +99,31 @@ accuracy=0.8541
 elapsed time=2366.8142956s  <-- that's about 40 minutes!
 ```
 
+```bash
+# broken down to 4 threads
+Creating data directory: data/MNIST
+Already downloaded
+Extracting data
+MNIST Loaded!
+train_imgs len=60000
+test_imgs len=10000
+train_labels len=60000
+test_labels len=10000
+k=3
+algorithm=Euclidean
+byte_size=One
+accuracy=0.8541
+elapsed time=2980.0857858s  <-- took longer?!?!?
+```
+
 Note that above sample output is using single thread to compare each test image 60,000 times (in release build)!
 
-## Postmortem and Caveats
+## Postmortem, Hindsights, and Caveats
 
-- I want to get started on this today so I'll come back to this section later...
+One thing that dawned on me while implementing the trained images search into blocks was the fact that it can cause inaccuracies on predictions due to (closest) images (distance, neighbors, etc) not being found on setA but will find it in setB, etc.  For example, on a 60,000 trained images, broken down to 4 threads (15,000 images per thread), if I request an image to be compared on the closest neighbor, and it found correct neighbors on for thread 1 and 2, but could only find something close but different class on thread 3 and 4 (i.e. found tshirt on thread 1 and 2, but there are no tshirts that looks like the image on thread 3 and 4), then it will be in the probabilty (guesstimate) of 50% as compared to the entire trained sample as a whole may have returned top K neighbors to be all tshirts.
+
+One solution I've thought of is to allow overlaps for each chunks, but then I've realized that's kind of moot because the question of what do I overlap? How much do I overlap? What if the overlap caused more false-positives due to it?
+
+As mentioned by few documents, for now, I've decided that in order to avoid ties based on A || B, I'll make sure to try to keep my thread-count to be odd count.  That also becomes moot if there were 3 top tiers - i.e. suppose I have 3 threads, and each thread chose differently, or I have 5 threads, in which 2 threads chose classA, another 2 threads chose classB, and one thread chose classC, then there is a tie again...
+
+In any case, this is just a multi-threaded KNN excercise, hence I'm not going to worry too much as long as my accuracies are above 80% or so...
