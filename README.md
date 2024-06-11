@@ -4,11 +4,15 @@ My series of Machine Learning experiences in Rust; and first in my list is the h
 
 Truth be told, main inspirations is because of this gentleman's video: [clumsy computer](https://www.youtube.com/watch?v=vzabeKdW9tE) which is quite entertaining to watch, mainly because we've all done the tensorflow tutorial of [Basic image classification](https://www.tensorflow.org/tutorials/keras/classification) and were left wondering what it was all about... Another side note is that the gentleman's video is about using [MNIST database](https://en.wikipedia.org/wiki/MNIST_database) and calling KNN algorithm to predict its classifications by taking the top K predictions and counting the most encountered.
 
+And lastly, if you just use 'tensorflow.keras', it will internally do all the parallel processing, and even will use GPU, probably in a way more smarter ways then I have done...  But honestly, the purpose of this excercise is based on the gentleman's video...  It's like somebody who said s/he wrote her own software renderer for 3D polygon rather than using OpenGL and/or DirectX (and writing draw_pixel() directly onto the screen buffer, etc)...  I am not curious enough to determine if the training will result to less than 6.5 minutes on the same machine I ran my logic on, but I'd imagine probably they can do better...
+
 ## Some differences
 
 One thing that inspired me into trying this out was (as mentioned above of the video that inspired me) KNN is slow, and what I wanted to experiement was on how I can speed up based on parallelizing the comparison against the trained images. MNIST database consits of 60K images, so with 4 threads, I can break that down to 15K per thread, and so on.
 
-  Side note: See postmortem and hindsight section in regards to trained images chunked into separate threads.
+  Side note 1: See postmortem and hindsight section in regards to trained images chunked into separate threads.
+  
+  Side note 2: Rather than threads, experiment with using [OpenCL](https://github.com/OpenCL) (I cannot use CUDA because I don't have a NVIDIA GPU, I think [rust-gpu-tools](https://crates.io/crates/rust-gpu-tools) can handle both transparently?)
 
 Initial thinking, because image comparison (at least, my initial intents) will be based on flattening the 2D image into 1D, and comparing byte-by-byte (`uint8`), if the image is 28x28 pixels (flatten to 784 pixels), that's 784 comparions per trained image. I've watched the video in which the coder prints out the index of the trained image it was comparing against, and the index he's print out would show in rate of about 1 per second... The coder also converted a single byte (`uint8`) into a 32-bit (`uint32`), wasting 24-bits per read.
 
